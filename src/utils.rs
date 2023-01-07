@@ -6,36 +6,40 @@ pub fn fill_datapack_header(type_pack: DataPack, data_pack: &mut [u8], sequence:
         data_pack[i] = *byte;
     }
     let head_len: u16 = 16;
-    let ver: u16;
-    let op_code: u32;
+    let mut ver: u16 = 0;
+    let mut op_code: u32 = 0;
     let mut offset = 4;
 
     match type_pack {
         DataPack::Auth => {
             (ver, op_code) = (1, 7);
-            let bs1 = head_len.to_be_bytes();
-            let bs2 = ver.to_be_bytes();
-            let bs3 = op_code.to_be_bytes();
-            let bs4 = sequence.to_be_bytes();
-
-            for byte in bs1 {
-                data_pack[offset] = byte;
-                offset += 1;
-            }
-            for byte in bs2 {
-                data_pack[offset] = byte;
-                offset += 1;
-            }
-            for byte in bs3 {
-                data_pack[offset] = byte;
-                offset += 1;
-            }
-            for byte in bs4 {
-                data_pack[offset] = byte;
-                offset += 1;
-            }
         }
-        DataPack::AuthResp => {}
+        DataPack::HeartBeat => {
+            (ver, op_code) = (1, 2);
+        }
+        _ => {}
+    }
+
+    let bs1 = head_len.to_be_bytes();
+    let bs2 = ver.to_be_bytes();
+    let bs3 = op_code.to_be_bytes();
+    let bs4 = sequence.to_be_bytes();
+
+    for byte in bs1 {
+        data_pack[offset] = byte;
+        offset += 1;
+    }
+    for byte in bs2 {
+        data_pack[offset] = byte;
+        offset += 1;
+    }
+    for byte in bs3 {
+        data_pack[offset] = byte;
+        offset += 1;
+    }
+    for byte in bs4 {
+        data_pack[offset] = byte;
+        offset += 1;
     }
 }
 

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use futures_util::{
+use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
@@ -61,11 +61,11 @@ struct HostServer {
 
 #[derive(Debug)]
 pub enum DataPack {
-    Auth, /* Authentication Pack */
-    AuthResp, /* Authentication Response Pack */
-          // HeartBeat,     /* Heart Beat Pack */
-          // HeartBeatResp, /* Heart Beat Response Pack */
-          // Normal,        /* Normal Pack */
+    Auth,          /* Authentication Pack */
+    AuthResp,      /* Authentication Response Pack */
+    HeartBeat,     /* Heart Beat Pack */
+    HeartBeatResp, /* Heart Beat Response Pack */
+    Normal,        /* Normal Pack */
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -161,7 +161,7 @@ impl DanmuClient {
         res
     }
 
-    pub async fn send_auth(&mut self) -> Result<(), reqwest::Error> {
+    pub async fn send_auth(&mut self) {
         let auth_pack_body =
             AuthPack::new(0, self.room_id, 3, "web".to_owned(), 2, self.token.clone());
         let ser_body = serde_json::to_vec(&auth_pack_body).unwrap();
@@ -179,8 +179,13 @@ impl DanmuClient {
             "auth_resp_pack: {:?}",
             std::str::from_utf8(&self.read().await.as_slice()[16..])
         );
+    }
 
-        Ok(())
+    pub async fn send_heart_beat(&mut self) {
+        let mut beat_pack: Vec<u8> = vec![0; 16];
+        utils::fill_datapack_header(DataPack::HeartBeat, beat_pack.as_mut_slice(), 1);
+        self.send(&beat_pack).await;
+        println!("heard_beat_resp_pack: {:?}", &self.read().await);
     }
 
     pub async fn connect(&mut self) -> Result<(), reqwest::Error> {
@@ -191,7 +196,7 @@ impl DanmuClient {
         self.shake_hands().await;
 
         // send authentication pack
-        self.send_auth().await.unwrap();
+        self.send_auth().await;
 
         Ok(())
     }
