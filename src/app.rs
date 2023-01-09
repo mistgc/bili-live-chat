@@ -27,10 +27,16 @@ impl App {
         let beat = tokio::spawn(async move {
             loop {
                 client1.lock().await.send_heart_beat().await;
-                println!("hello");
                 tokio::time::sleep(Duration::from_secs(30)).await;
             }
         });
-        tokio::join!(beat);
+        let client2 = self.danmu_client.clone();
+        let recv_msg = tokio::spawn(async move {
+            loop {
+                client2.lock().await.receive().await;
+                tokio::time::sleep(Duration::from_secs_f32(0.5)).await;
+            }
+        });
+        tokio::join!(beat, recv_msg);
     }
 }

@@ -163,7 +163,8 @@ impl DanmuClient {
 
     pub async fn send_auth(&mut self) {
         let auth_pack_body =
-            AuthPack::new(0, self.room_id, 3, "web".to_owned(), 2, self.token.clone());
+            // If 'protover' is 2, the response pack will be compressed by 'zlib'.
+            AuthPack::new(0, self.room_id, 2, "web".to_owned(), 2, self.token.clone());
         let ser_body = serde_json::to_vec(&auth_pack_body).unwrap();
         let mut auth_pack: Vec<u8> = vec![0; ser_body.len() + 16];
 
@@ -185,7 +186,6 @@ impl DanmuClient {
         let mut beat_pack: Vec<u8> = vec![0; 16];
         utils::fill_datapack_header(DataPack::HeartBeat, beat_pack.as_mut_slice(), 1);
         self.send(&beat_pack).await;
-        println!("heard_beat_resp_pack: {:?}", &self.read().await);
     }
 
     pub async fn connect(&mut self) -> Result<(), reqwest::Error> {
@@ -199,6 +199,25 @@ impl DanmuClient {
         self.send_auth().await;
 
         Ok(())
+    }
+
+    pub async fn receive(&mut self) {
+        let msg = self.read().await;
+        if msg.len() >= 16 {
+            println!(
+                "receive: {:?}, vec len: {}",
+                &msg.as_slice()[0..16],
+                msg.len()
+            );
+            if msg[7] == 2 {
+                // data compressed by zlib, then need to decompressing
+                let dec_data = utils::zlib_dec(&msg[16..]).unwrap();
+                let packs = utils::split_packs(&dec_data);
+                for p in packs {
+                    println!("{}", std::str::from_utf8(p.as_slice()).unwrap());
+                }
+            }
+        }
     }
 }
 

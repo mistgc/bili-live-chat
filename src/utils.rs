@@ -1,3 +1,6 @@
+use flate2::read::ZlibDecoder;
+use std::io::prelude::*;
+
 use crate::client::DataPack;
 
 pub fn fill_datapack_header(type_pack: DataPack, data_pack: &mut [u8], sequence: u32) {
@@ -41,6 +44,34 @@ pub fn fill_datapack_header(type_pack: DataPack, data_pack: &mut [u8], sequence:
         data_pack[offset] = byte;
         offset += 1;
     }
+}
+
+pub fn zlib_dec(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+    let mut d = ZlibDecoder::new(data);
+    let mut buf = Vec::new();
+    d.read_to_end(&mut buf)?;
+
+    Ok(buf)
+}
+
+pub fn split_packs(data: &[u8]) -> Vec<Vec<u8>> {
+    let total_len = data.len();
+    let mut packs: Vec<Vec<u8>> = vec![];
+    // start point of per pack
+    let mut start: usize = 0;
+    // length of per pack
+    let mut len = 0;
+    while start + len < total_len {
+        let mut pack: Vec<u8> = vec![];
+        len = u32::from_be_bytes(data[(start)..(start + 4)].try_into().unwrap()) as usize;
+
+        pack.extend_from_slice(&data[start + 16..start + len]);
+        packs.push(pack);
+
+        start += len;
+    }
+
+    packs
 }
 
 #[test]
