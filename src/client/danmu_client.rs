@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::{Message, MessageKind};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -11,7 +12,7 @@ use tokio::{
     sync::mpsc::{Receiver, Sender},
 };
 use tokio_tungstenite as tungstenite;
-use tungstenite::{tungstenite::protocol::Message, MaybeTlsStream};
+use tungstenite::{tungstenite::protocol::Message as WssMessage, MaybeTlsStream};
 
 use crate::utils;
 
@@ -31,16 +32,16 @@ pub trait Pack {
 
 #[derive(Debug, Default)]
 pub struct DanmuClient {
-    client: reqwest::Client,                                 /* Http Client */
-    auth: CookieAuth,                                        /* Cookie Auth */
-    room_id: u32,                                            /* Room ID */
-    token: String,                                           /* Token */
-    host_list: Vec<HostServer>,                              /* Danmu Host Server List */
+    client: reqwest::Client,                                    /* Http Client */
+    auth: CookieAuth,                                           /* Cookie Auth */
+    room_id: u32,                                               /* Room ID */
+    token: String,                                              /* Token */
+    host_list: Vec<HostServer>,                                 /* Danmu Host Server List */
     host_index: u8, /* Index of Danmu Host Server Connected */
-    conn_write: Option<SplitSink<WebSocketStream, Message>>, /* Connection with Danmu Host Server */
+    conn_write: Option<SplitSink<WebSocketStream, WssMessage>>, /* Connection with Danmu Host Server */
     conn_read: Option<SplitStream<WebSocketStream>>, /* Connection with Danmu Host Server */
-    mpsc_tx: Option<Sender<Message>>, /* Channel Sender */
-    mpsc_rx: Option<Receiver<Message>>, /* Channel Receiver */
+    mpsc_tx: Option<Sender<WssMessage>>,             /* Channel Sender */
+    mpsc_rx: Option<Receiver<WssMessage>>,           /* Channel Receiver */
 }
 
 #[derive(Debug, Default)]
@@ -83,6 +84,7 @@ pub struct AuthPack {
     #[serde(rename = "key")]
     _key: String,
 }
+
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct AuthRespPack {}
 
@@ -142,7 +144,7 @@ impl DanmuClient {
         self.conn_write
             .as_mut()
             .unwrap()
-            .send(Message::from(data))
+            .send(WssMessage::from(data))
             .await
             .unwrap();
     }
@@ -214,9 +216,33 @@ impl DanmuClient {
                 let dec_data = utils::zlib_dec(&msg[16..]).unwrap();
                 let packs = utils::split_packs(&dec_data);
                 for p in packs {
-                    println!("{}", std::str::from_utf8(p.as_slice()).unwrap());
+                    self.handle_msg(p.as_slice());
                 }
             }
+        }
+    }
+
+    fn handle_msg(&mut self, msg: &[u8]) {
+        let json: serde_json::Value = serde_json::from_slice(msg).unwrap();
+        match json["cmd"].to_string().as_str() {
+            "\"DANMU_MSG\"" => {
+                let content = json["info"][1].to_string();
+                let author = json["info"][2][1].to_string();
+                let datetime = utils::timestamp_to_datetime(
+                    json["info"][9]["ts"].to_string().parse().unwrap(),
+                );
+                let msg = Message::new(MessageKind::DANMU_MSG, content, author, datetime);
+
+                // TODO: Push the message into a channel that communicates with TUI.
+                // 1. create TUI program
+                // 2. create a mpsc channel
+                // 3. send and receive message from the different end of the channel
+            }
+            "\"COMBO_SEND\"" => {}
+            "\"SEND_GIFT\"" => {}
+            "\"INTERACT_WORD\"" => {}
+            "\"NOTICE_MSG\"" => {}
+            _ => {}
         }
     }
 }

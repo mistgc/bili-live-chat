@@ -1,3 +1,4 @@
+use chrono::{self, Datelike, Timelike};
 use flate2::read::ZlibDecoder;
 use std::io::prelude::*;
 
@@ -72,6 +73,15 @@ pub fn split_packs(data: &[u8]) -> Vec<Vec<u8>> {
     }
 
     packs
+}
+
+pub fn timestamp_to_datetime(ts: u64) -> chrono::DateTime<chrono::Utc> {
+    let offset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
+
+    // UTC+8
+    chrono::DateTime::<chrono::Utc>::from(
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts),
+    ) + offset
 }
 
 #[test]
