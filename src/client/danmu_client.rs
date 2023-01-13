@@ -7,10 +7,7 @@ use futures::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
-use tokio::{
-    net::TcpStream,
-    sync::mpsc::{Receiver, Sender},
-};
+use tokio::{net::TcpStream, sync::mpsc::Sender};
 use tokio_tungstenite as tungstenite;
 use tungstenite::{tungstenite::protocol::Message as WssMessage, MaybeTlsStream};
 
@@ -40,8 +37,7 @@ pub struct DanmuClient {
     host_index: u8, /* Index of Danmu Host Server Connected */
     conn_write: Option<SplitSink<WebSocketStream, WssMessage>>, /* Connection with Danmu Host Server */
     conn_read: Option<SplitStream<WebSocketStream>>, /* Connection with Danmu Host Server */
-    mpsc_tx: Option<Sender<WssMessage>>,             /* Channel Sender */
-    mpsc_rx: Option<Receiver<WssMessage>>,           /* Channel Receiver */
+    mpsc_tx: Option<Sender<Message>>,                /* Channel Sender */
 }
 
 #[derive(Debug, Default)]
@@ -89,10 +85,11 @@ pub struct AuthPack {
 pub struct AuthRespPack {}
 
 impl DanmuClient {
-    pub fn new(room_id: u32, auth: CookieAuth) -> Self {
+    pub fn new(room_id: u32, auth: CookieAuth, mpsc_tx: Sender<Message>) -> Self {
         Self {
             room_id,
             auth,
+            mpsc_tx: Some(mpsc_tx),
             ..Default::default()
         }
     }
@@ -116,10 +113,6 @@ impl DanmuClient {
         for obj in host_list_raw {
             self.host_list.push(HostServer::deserialize(obj).unwrap());
         }
-        // create a channel
-        let (tx, rx) = mpsc::channel(512);
-        self.mpsc_tx = Some(tx);
-        self.mpsc_rx = Some(rx);
 
         Ok(())
     }
@@ -132,7 +125,6 @@ impl DanmuClient {
                     self.conn_write = Some(write);
                     self.conn_read = Some(read);
                     self.host_index = i as u8;
-                    println!("Danmu Host Server Response: {:?}", conn_raw.1);
                     break;
                 }
                 Err(e) => eprintln!("{:#?}", e),
@@ -178,10 +170,6 @@ impl DanmuClient {
         }
 
         self.send(&auth_pack).await;
-        println!(
-            "auth_resp_pack: {:?}",
-            std::str::from_utf8(&self.read().await.as_slice()[16..])
-        );
     }
 
     pub async fn send_heart_beat(&mut self) {
@@ -206,23 +194,18 @@ impl DanmuClient {
     pub async fn receive(&mut self) {
         let msg = self.read().await;
         if msg.len() >= 16 {
-            println!(
-                "receive: {:?}, vec len: {}",
-                &msg.as_slice()[0..16],
-                msg.len()
-            );
             if msg[7] == 2 {
                 // data compressed by zlib, then need to decompressing
                 let dec_data = utils::zlib_dec(&msg[16..]).unwrap();
                 let packs = utils::split_packs(&dec_data);
                 for p in packs {
-                    self.handle_msg(p.as_slice());
+                    self.handle_msg(p.as_slice()).await;
                 }
             }
         }
     }
 
-    fn handle_msg(&mut self, msg: &[u8]) {
+    async fn handle_msg(&mut self, msg: &[u8]) {
         let json: serde_json::Value = serde_json::from_slice(msg).unwrap();
         match json["cmd"].to_string().as_str() {
             "\"DANMU_MSG\"" => {
@@ -231,12 +214,14 @@ impl DanmuClient {
                 let datetime = utils::timestamp_to_datetime(
                     json["info"][9]["ts"].to_string().parse().unwrap(),
                 );
-                let msg = Message::new(MessageKind::DANMU_MSG, content, author, datetime);
-
-                // TODO: Push the message into a channel that communicates with TUI.
-                // 1. create TUI program
-                // 2. create a mpsc channel
-                // 3. send and receive message from the different end of the channel
+                let msg = Message::new(
+                    MessageKind::DANMU_MSG,
+                    content[1..content.len() - 1].to_owned(),
+                    author[1..author.len() - 1].to_owned(),
+                    datetime,
+                );
+                /* Send Message to Channel */
+                self.mpsc_tx.as_mut().unwrap().send(msg).await.unwrap();
             }
             "\"COMBO_SEND\"" => {}
             "\"SEND_GIFT\"" => {}

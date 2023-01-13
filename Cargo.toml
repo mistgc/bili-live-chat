@@ -19,8 +19,13 @@ path = "examples/endian.rs"
 name = "application"
 path = "examples/application.rs"
 
+[[example]]
+name = "tui_demo"
+path = "examples/tui_demo.rs"
+
 [dependencies]
 chrono = "0.4.23"
+crossterm = "0.25.0"
 flate2 = "1.0.25"
 futures = "0.3.25"
 reqwest = { version = "0.11.13", features = ["json"] }
@@ -28,3 +33,4 @@ serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 tokio = { version = "1.23.0", features = ["full"] }
 tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
+tui = "0.19.0"
