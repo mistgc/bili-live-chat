@@ -182,7 +182,7 @@ fn draw_first_tab<B: Backend>(f: &mut Frame<B>, aw: &mut AppWidgets, area: Rect)
             }
         })
         .collect();
-    let chat_history = {
+    let mut chat_history = {
         let mut res = vec![];
         for i in list.messages {
             res.push(i.title.style(Style::default().fg(Color::Cyan)));
@@ -190,8 +190,10 @@ fn draw_first_tab<B: Backend>(f: &mut Frame<B>, aw: &mut AppWidgets, area: Rect)
         }
         res
     };
-    let chat_history =
-        List::new(chat_history).block(Block::default().borders(Borders::ALL).title("Messages"));
+    chat_history.reverse();
+    let chat_history = List::new(chat_history)
+        .block(Block::default().borders(Borders::ALL).title("Messages"))
+        .start_corner(tui::layout::Corner::BottomLeft);
     f.render_widget(chat_history, chunks[0]);
 
     let input = Paragraph::new(aw.input.as_ref())

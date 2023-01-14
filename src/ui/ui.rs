@@ -160,8 +160,10 @@ fn draw_chat_room<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
         );
         chat_history.push(ListItem::new(Text::from(Spans::from(msg.content.clone()))));
     }
-    let chat_history =
-        List::new(chat_history).block(Block::default().borders(Borders::ALL).title("Messages"));
+    chat_history.reverse();
+    let chat_history = List::new(chat_history)
+        .block(Block::default().borders(Borders::ALL).title("Messages"))
+        .start_corner(tui::layout::Corner::BottomLeft);
     f.render_widget(chat_history, chunks[0]);
 
     /* Input Box */
