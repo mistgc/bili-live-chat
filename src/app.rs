@@ -9,16 +9,16 @@ use std::{io::Stdout, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, Mutex};
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{client, UI};
+use crate::{client, Credential, UI};
 
 pub struct App {
     ui: Arc<Mutex<UI<CrosstermBackend<Stdout>>>>, /* UI */
-    danmu_client: Arc<Mutex<client::DanmuClient>>, /* danmu client */
+    danmu_client: Arc<Mutex<client::DanmakuClient>>, /* danmu client */
                                                   /* Todo: config */
 }
 
 impl App {
-    pub fn new(room_id: u32, cookie: client::CookieAuth) -> Self {
+    pub fn new(room_id: u32, credential: Credential) -> Self {
         let (tx, rx) = mpsc::channel(512);
 
         /* setup terminal */
@@ -28,8 +28,8 @@ impl App {
         let backend = CrosstermBackend::new(stdout);
         let term = Terminal::new(backend).unwrap();
 
-        let client = Arc::new(Mutex::new(client::DanmuClient::new(room_id, cookie, tx)));
-        let ui = Arc::new(Mutex::new(UI::new(term, rx)));
+        let client = Arc::new(Mutex::new(client::DanmakuClient::new(room_id, tx)));
+        let ui = Arc::new(Mutex::new(UI::new(term, rx, room_id as i64, credential)));
 
         Self {
             danmu_client: client,
@@ -55,7 +55,7 @@ impl App {
         });
         let ui = self.ui.clone();
         let draw_ui = tokio::spawn(async move {
-            ui.lock().await.run().unwrap();
+            ui.lock().await.run().await.unwrap();
         });
         tokio::join!(beat, recv_msg, draw_ui).0.unwrap();
     }

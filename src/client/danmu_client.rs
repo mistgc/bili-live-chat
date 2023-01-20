@@ -6,11 +6,11 @@ use futures::{
     SinkExt, StreamExt,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
 use tokio::{net::TcpStream, sync::mpsc::Sender};
 use tokio_tungstenite as tungstenite;
 use tungstenite::{tungstenite::protocol::Message as WssMessage, MaybeTlsStream};
 
+use crate::client::Account;
 use crate::utils;
 
 type WebSocketStream = tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -28,9 +28,9 @@ pub trait Pack {
 }
 
 #[derive(Debug, Default)]
-pub struct DanmuClient {
+pub struct DanmakuClient {
     client: reqwest::Client,                                    /* Http Client */
-    auth: CookieAuth,                                           /* Cookie Auth */
+    account: Account,                                           /* BiliBili Account */
     room_id: u32,                                               /* Room ID */
     token: String,                                              /* Token */
     host_list: Vec<HostServer>,                                 /* Danmu Host Server List */
@@ -38,14 +38,6 @@ pub struct DanmuClient {
     conn_write: Option<SplitSink<WebSocketStream, WssMessage>>, /* Connection with Danmu Host Server */
     conn_read: Option<SplitStream<WebSocketStream>>, /* Connection with Danmu Host Server */
     mpsc_tx: Option<Sender<Message>>,                /* Channel Sender */
-}
-
-#[derive(Debug, Default)]
-pub struct CookieAuth {
-    dede_user_id: String,
-    dede_user_id_ckmd5: String,
-    sess_data: String,
-    bili_jct: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,11 +76,10 @@ pub struct AuthPack {
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct AuthRespPack {}
 
-impl DanmuClient {
-    pub fn new(room_id: u32, auth: CookieAuth, mpsc_tx: Sender<Message>) -> Self {
+impl DanmakuClient {
+    pub fn new(room_id: u32, mpsc_tx: Sender<Message>) -> Self {
         Self {
             room_id,
-            auth,
             mpsc_tx: Some(mpsc_tx),
             ..Default::default()
         }

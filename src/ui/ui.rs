@@ -1,6 +1,6 @@
 use std::{process::exit, time::Duration};
 
-use crate::{Message, MessageKind};
+use crate::{api::live::LiveRoom, Credential, Message, MessageKind};
 use crossterm::{
     event::{self, DisableMouseCapture, Event, KeyCode},
     execute,
@@ -27,6 +27,7 @@ enum InputMode {
 pub struct UI<B: Backend + std::io::Write> {
     ui_state: UiState,
     terminal: Option<Terminal<B>>,
+    live_room: LiveRoom,
 }
 
 #[derive(Debug, Default)]
@@ -45,24 +46,39 @@ struct UiState {
 }
 
 impl<B: Backend + std::io::Write> UI<B> {
-    pub fn new(term: Terminal<B>, mpsc_rx: Receiver<Message>) -> Self {
+    pub fn new(
+        term: Terminal<B>,
+        mpsc_rx: Receiver<Message>,
+        room_id: i64,
+        credential: Credential,
+    ) -> Self {
         let state = UiState {
             mpsc_rx: Some(mpsc_rx),
             ..Default::default()
         };
 
+        let live_room = LiveRoom::new(room_id, credential);
+
         Self {
             terminal: Some(term),
             ui_state: state,
+            live_room,
         }
     }
 
-    pub fn run(&mut self) -> std::io::Result<()> {
+    pub async fn run(&mut self) -> std::io::Result<()> {
         if self.terminal.is_none() {
             panic!("Err: The terminal af TUI invalid!!!");
         }
 
         loop {
+            // When the length of chat_history is greater than or equal to 100,
+            // clear up the first 50 chats to ensure that the length of chat_history
+            // is not too long.
+            if self.ui_state.chat_history.len() >= 100 {
+                self.ui_state.chat_history.drain(0..50);
+            }
+
             /* Draw UI */
             self.terminal
                 .as_mut()
@@ -83,7 +99,7 @@ impl<B: Backend + std::io::Write> UI<B> {
             }
 
             /* Poll Keyboard Events */
-            if crossterm::event::poll(Duration::from_millis(200)).unwrap() {
+            if crossterm::event::poll(Duration::from_millis(100)).unwrap() {
                 if let Event::Key(key) = event::read()? {
                     match self.ui_state.input_mode {
                         InputMode::Normal => match key.code {
@@ -110,6 +126,14 @@ impl<B: Backend + std::io::Write> UI<B> {
                             }
                             KeyCode::Backspace => {
                                 self.ui_state.input_buf.pop();
+                            }
+                            KeyCode::Enter => {
+                                if self.ui_state.input_buf.len() > 0 {
+                                    self.live_room
+                                        .send_normal_danmaku(self.ui_state.input_buf.as_str())
+                                        .await;
+                                    self.ui_state.input_buf.clear();
+                                }
                             }
                             _ => {}
                         },
