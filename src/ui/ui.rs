@@ -1,12 +1,12 @@
-use std::{process::exit, time::Duration};
+use std::{process::exit, sync::Arc, time::Duration};
 
-use crate::{api::live::LiveRoom, Credential, Message, MessageKind};
+use crate::{api::live::LiveRoom, config::Config, Credential, Message, MessageKind};
 use crossterm::{
     event::{self, DisableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::{mpsc::Receiver, Mutex};
 use tui::{
     backend::Backend,
     layout::{Constraint, Layout, Rect},
@@ -28,6 +28,7 @@ pub struct UI<B: Backend + std::io::Write> {
     ui_state: UiState,
     terminal: Option<Terminal<B>>,
     live_room: LiveRoom,
+    config: Arc<Mutex<Config>>,
 }
 
 #[derive(Debug, Default)]
@@ -46,23 +47,24 @@ struct UiState {
 }
 
 impl<B: Backend + std::io::Write> UI<B> {
-    pub fn new(
+    pub async fn new(
         term: Terminal<B>,
         mpsc_rx: Receiver<Message>,
         room_id: i64,
-        credential: Credential,
+        config: Arc<Mutex<Config>>,
     ) -> Self {
         let state = UiState {
             mpsc_rx: Some(mpsc_rx),
             ..Default::default()
         };
 
-        let live_room = LiveRoom::new(room_id, credential);
+        let live_room = LiveRoom::new(room_id, config.lock().await.credential.clone());
 
         Self {
             terminal: Some(term),
             ui_state: state,
             live_room,
+            config,
         }
     }
 

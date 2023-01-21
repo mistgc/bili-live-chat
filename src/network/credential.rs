@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone)]
 pub struct Credential {
     pub session_data: String,
     pub bili_jct: String,

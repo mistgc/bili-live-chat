@@ -9,16 +9,17 @@ use std::{io::Stdout, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, Mutex};
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{client, Credential, UI};
+use crate::{client, config::Config, UI};
 
 pub struct App {
-    ui: Arc<Mutex<UI<CrosstermBackend<Stdout>>>>, /* UI */
+    ui: Arc<Mutex<UI<CrosstermBackend<Stdout>>>>,    /* UI */
     danmu_client: Arc<Mutex<client::DanmakuClient>>, /* danmu client */
-                                                  /* Todo: config */
+    config: Arc<Mutex<Config>>,                      /* config */
 }
 
 impl App {
-    pub fn new(room_id: u32, credential: Credential) -> Self {
+    pub async fn new(room_id: u32, config: Config) -> Self {
+        let conf = Arc::new(Mutex::new(config));
         let (tx, rx) = mpsc::channel(512);
 
         /* setup terminal */
@@ -29,11 +30,14 @@ impl App {
         let term = Terminal::new(backend).unwrap();
 
         let client = Arc::new(Mutex::new(client::DanmakuClient::new(room_id, tx)));
-        let ui = Arc::new(Mutex::new(UI::new(term, rx, room_id as i64, credential)));
+        let ui = Arc::new(Mutex::new(
+            UI::new(term, rx, room_id as i64, conf.clone()).await,
+        ));
 
         Self {
-            danmu_client: client,
             ui,
+            danmu_client: client,
+            config: conf.clone(),
         }
     }
 
