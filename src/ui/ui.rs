@@ -131,10 +131,17 @@ impl<B: Backend + std::io::Write> UI<B> {
                             }
                             KeyCode::Enter => {
                                 if self.ui_state.input_buf.len() > 0 {
+                                    let danmaku_text =
+                                        self.ui_state.input_buf.drain(..).collect::<String>();
+                                    // refresh ui immediately
+                                    self.terminal
+                                        .as_mut()
+                                        .unwrap()
+                                        .draw(|f| draw_ui(f, &mut self.ui_state))?;
+
                                     self.live_room
-                                        .send_normal_danmaku(self.ui_state.input_buf.as_str())
+                                        .send_normal_danmaku(danmaku_text.as_str())
                                         .await;
-                                    self.ui_state.input_buf.clear();
                                 }
                             }
                             _ => {}
@@ -204,9 +211,13 @@ fn draw_chat_room<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
     }
 }
 
-fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {}
+fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
+    todo!()
+}
 
-fn draw_live_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {}
+fn draw_live_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
+    todo!()
+}
 
 impl<B: Backend + std::io::Write> Drop for UI<B> {
     fn drop(&mut self) {
