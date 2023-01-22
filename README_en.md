@@ -1,8 +1,8 @@
 # bili-live-chat
 
-一个由Rust写的bilibili直播聊天TUI工具。
+A bilibili streaming chat tool using TUI written in Rust.
 
-## 安装
+## Installaion
 
 ### Linux
 
@@ -14,10 +14,10 @@ sudo cp target/release/bili-live-chat /usr/local/bin/bili-live-chat
 bili-live-chat --version
 ```
 
-## 配置
+## Configuration
 
-配置文件在 `$HOME/.config/bili-live-chat/config.yml` ，格式为 **YAML** 。
-`credential` 中所有字段全来源于 [BiLiBiLi](https://www.bilibili.com) 的Cookies。
+The path of config file is `$HOME/.config/bili-live-chat/config.yml`, and the format of config file is **YAML**.
+All fields of `credential` come from Cookies from [BiLiBiLi](https://www.bilibili.com).
 
 ```yaml
 credential:
@@ -26,7 +26,7 @@ credential:
   buvid3: "<Your buvid3>"
 ```
 
-## 使用
+## Usage
 
 ```
 Usage: bili-live-chat [OPTIONS] -d <ROOM_ID>
@@ -41,20 +41,20 @@ Options:
   -V, --version              Print version
 ```
 ```bash
-# 使用配置文件
+# use with config file
 bili-live-chat -d <ROOM_ID>
 
-# 不使用配置文件或者直接传递所有凭证(credential)的字段 (如果没有配置文件的话)
+# use without config file or pass fields of the credential directly (if the config file does not exist)
 bili-live-chat -d <ROOM_ID> -s "sessdata" -b "bili_jct" -u "buvid3"
 ```
 
-注意：如果有配置文件，且使用命令行传递了凭证(credential)的字段，后者将覆盖配置文件中的凭证(credential)的字段。
+Notice: If the config file exists, and some of the fields of the credential are passed by CLI, the latter will overwrite the fields of the credential from the config file.
 
-## 要求
+## Requirements
 
 On Linux:
 - OpenSSL 1.0.1, 1.0.2, 1.1.0, or 1.1.1 with headers (see https://github.com/sfackler/rust-openssl)
 
-## 类似项目
+## Similar Projects
 
 [yaocccc/bilibili_live_tui](https://github.com/yaocccc/bilibili_live_tui): 终端下使用的bilibili弹幕获取和弹幕发送服务 
