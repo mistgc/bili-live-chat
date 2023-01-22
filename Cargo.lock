@@ -45,6 +45,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tui",
+ "unicode-width",
 ]
 
 [[package]]

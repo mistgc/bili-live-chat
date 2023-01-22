@@ -15,6 +15,7 @@ use tui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Frame, Terminal,
 };
+use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Default)]
 enum InputMode {
@@ -206,7 +207,8 @@ fn draw_chat_room<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
     match us.input_mode {
         InputMode::Normal => {}
         InputMode::Editing => {
-            f.set_cursor(chunks[1].x + us.input_buf.len() as u16 + 1, chunks[1].y + 1);
+            let len = UnicodeWidthStr::width(us.input_buf.as_str());
+            f.set_cursor(chunks[1].x + len as u16 + 1, chunks[1].y + 1);
         }
     }
 }
