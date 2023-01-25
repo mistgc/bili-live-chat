@@ -14,10 +14,22 @@ sudo cp target/release/bili-live-chat /usr/local/bin/bili-live-chat
 bili-live-chat --version
 ```
 
+### Windows
+
+```bash
+git clone https://github.com/zaiic/bili-live-chat.git
+cd bili-live-chat
+cargo build --release
+# put the path of the directory to the PATH of USER in the environment variable for global use
+bili-live-chat.exe --version
+```
+
 ## Configuration
 
 The path of config file is `$HOME/.config/bili-live-chat/config.yml`, and the format of config file is **YAML**.
 All fields of `credential` come from Cookies from [BiLiBiLi](https://www.bilibili.com).
+
+Notice: In **Windows**, the config file is located at `C:\Users\your_username\.config\bili-live-chat\config.yml`.
 
 ```yaml
 credential:

@@ -14,10 +14,22 @@ sudo cp target/release/bili-live-chat /usr/local/bin/bili-live-chat
 bili-live-chat --version
 ```
 
+### Windows
+
+```bash
+git clone https://github.com/zaiic/bili-live-chat.git
+cd bili-live-chat
+cargo build --release
+# 将当前目录加入至用户的PATH目录后，以便全局使用
+bili-live-chat.exe --version
+```
+
 ## 配置
 
 配置文件在 `$HOME/.config/bili-live-chat/config.yml` ，格式为 **YAML** 。
 `credential` 中所有字段全来源于 [BiLiBiLi](https://www.bilibili.com) 的Cookies。
+
+注意：**Windows**下，配置文件默认在`C:\Users\用户名\.config\bili-live-chat\config.yml`。
 
 ```yaml
 credential:
