@@ -27,6 +27,7 @@ path = "examples/tui_demo.rs"
 chrono = "0.4.23"
 clap = { version = "4.1.1", features = ["cargo"] }
 crossterm = "0.25.0"
+directories = "4.0.1"
 flate2 = "1.0.25"
 futures = "0.3.25"
 reqwest = { version = "0.11.13", features = ["json"] }

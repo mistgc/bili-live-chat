@@ -58,9 +58,17 @@ fn cli_init() -> (u32, Config) {
 
     let mut config = if let Some(path) = matches.get_one::<String>("config") {
         Config::from_file(path).unwrap()
-    } else if let Ok(conf) =
-        Config::from_file(format!("{}/.config/bili-live-chat/config.yml", env!("HOME")).as_str())
-    {
+    } else if let Ok(conf) = Config::from_file(
+        format!(
+            "{}/.config/bili-live-chat/config.yml",
+            directories::BaseDirs::new()
+                .unwrap()
+                .home_dir()
+                .to_str()
+                .unwrap()
+        )
+        .as_str(),
+    ) {
         conf
     } else {
         match (
