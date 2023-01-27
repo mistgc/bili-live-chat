@@ -14,30 +14,36 @@ impl Request {
     ) -> Result<reqwest::Response, reqwest::Error> {
         let method = method.to_uppercase();
         let client = reqwest::Client::new();
+        let mut url = url.to_owned();
 
         // From hashmap to a single string
         let cookies = if let Some(cert) = credential {
             cert.get_cookies()
                 .unwrap()
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v).replace(";", "%3B"))
+                .map(|(k, v)| format!("{}={}", k, v).replace(';', "%3B"))
                 .collect::<Vec<_>>()
                 .join(";")
         } else {
             "".to_owned()
         };
 
+        if params.is_some() {
+            url += "?";
+            for (k, v) in params.unwrap() {
+                url += format!("{}={}&", k, v).as_str();
+            }
+        }
+
+        url.pop();
+
         // Create a request builder
         let mut req_builder = client
             .request(
                 reqwest::Method::from_str(&method).unwrap(),
-                reqwest::Url::from_str(url).unwrap(),
+                reqwest::Url::from_str(url.as_str()).unwrap(),
             )
             .header("Referer", "https://www.bilibili.com");
-
-        if params.is_some() {
-            todo!()
-        }
 
         // Add cookies into headers of request
         if cookies.len() > 0 {

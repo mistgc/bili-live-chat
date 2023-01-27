@@ -1,4 +1,4 @@
-use std::{process::exit, sync::Arc, time::Duration};
+use std::{collections::HashMap, process::exit, sync::Arc, time::Duration};
 
 use crate::{api::live::LiveRoom, config::Config, Credential, Message, MessageKind};
 use crossterm::{
@@ -32,30 +32,46 @@ pub struct UI<B: Backend + std::io::Write> {
     config: Arc<Mutex<Config>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 struct UiState {
     /* Channal Receiver */
-    mpsc_rx: Option<Receiver<Message>>,
+    msg_rx: Option<Receiver<Message>>,
+    rm_info_rx: Option<Receiver<HashMap<String, String>>>,
 
     /* Tab 1: Chat Room */
     input_mode: InputMode,
     tab_selected: usize,
     input_buf: String,
     chat_history: Vec<Message>,
+
     /* Tab 2: Rank Info */
 
-    /* Tab 3: Live Room Info */
+    /* Tab 3: Room Info */
+    uid: String,
+    room_id: String,
+    title: String,
+    tags: String,
+    description: String,
+    area_name: String,
+    parent_area_name: String,
+    live_start_time: i64,
+    watched_show: i64,
+    attention: i64,
+    uname: String,
 }
 
 impl<B: Backend + std::io::Write> UI<B> {
     pub async fn new(
         term: Terminal<B>,
-        mpsc_rx: Receiver<Message>,
+        msg_rx: Receiver<Message>,
+        rm_info_rx: Receiver<HashMap<String, String>>,
         room_id: i64,
         config: Arc<Mutex<Config>>,
     ) -> Self {
         let state = UiState {
-            mpsc_rx: Some(mpsc_rx),
+            msg_rx: Some(msg_rx),
+            rm_info_rx: Some(rm_info_rx),
             ..Default::default()
         };
 
@@ -66,6 +82,13 @@ impl<B: Backend + std::io::Write> UI<B> {
             ui_state: state,
             live_room,
             config,
+        }
+    }
+
+    fn tab_next(&mut self) {
+        self.ui_state.tab_selected += 1;
+        if self.ui_state.tab_selected > 2 {
+            self.ui_state.tab_selected = 0;
         }
     }
 
@@ -89,16 +112,28 @@ impl<B: Backend + std::io::Write> UI<B> {
                 .draw(|f| draw_ui(f, &mut self.ui_state))?;
 
             /* Receive Message */
-            if let Ok(msg) = self.ui_state.mpsc_rx.as_mut().unwrap().try_recv() {
+            if let Ok(msg) = self.ui_state.msg_rx.as_mut().unwrap().try_recv() {
                 match msg.kind {
                     MessageKind::DANMU_MSG => {
                         self.ui_state.chat_history.push(msg);
                     }
-                    MessageKind::SEND_GIFT => {}
-                    MessageKind::COMBO_SEND => {}
-                    MessageKind::NOTICE_MSG => {}
-                    MessageKind::INTERACT_WORD => {}
+                    _ => {}
                 }
+            }
+
+            /* Sync Room Info */
+            if let Ok(ri) = self.ui_state.rm_info_rx.as_mut().unwrap().try_recv() {
+                self.ui_state.uid = ri["uid"].clone();
+                self.ui_state.room_id = ri["room_id"].clone();
+                self.ui_state.title = ri["title"].clone();
+                self.ui_state.tags = ri["tags"].clone();
+                self.ui_state.description = ri["description"].clone();
+                self.ui_state.area_name = ri["area_name"].clone();
+                self.ui_state.parent_area_name = ri["parent_area_name"].clone();
+                self.ui_state.live_start_time = ri["live_start_time"].parse().unwrap();
+                self.ui_state.watched_show = ri["watched_show"].parse().unwrap();
+                self.ui_state.attention = ri["attention"].parse().unwrap();
+                self.ui_state.uname = ri["uname"].clone();
             }
 
             /* Poll Keyboard Events */
@@ -117,6 +152,9 @@ impl<B: Backend + std::io::Write> UI<B> {
                                     .unwrap();
                                 self.terminal.as_mut().unwrap().show_cursor().unwrap();
                                 exit(0)
+                            }
+                            KeyCode::Tab => {
+                                self.tab_next();
                             }
                             _ => {}
                         },
@@ -163,7 +201,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, us: &mut UiState) {
     let tabs_title = vec![
         "Chat Room".to_owned(),
         "Rank Info".to_owned(),
-        "Live Room Info".to_owned(),
+        "Room Info".to_owned(),
     ];
     let tabs_title = tabs_title
         .iter()
@@ -175,7 +213,7 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, us: &mut UiState) {
     match us.tab_selected {
         0 => draw_chat_room(f, us, chunks[1]),
         1 => draw_rank_info(f, us, chunks[1]),
-        2 => draw_live_room_info(f, us, chunks[1]),
+        2 => draw_room_info(f, us, chunks[1]),
         _ => unreachable!(),
     };
 }
@@ -214,11 +252,67 @@ fn draw_chat_room<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
 }
 
 fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
-    todo!()
+    let chunks = Layout::default()
+        .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+        .split(area);
+    // TODO
 }
 
-fn draw_live_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
-    todo!()
+fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
+    let chunks = Layout::default()
+        .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+        .split(area);
+
+    /* base info */
+    let text = vec![
+        Spans::from(vec![
+            Span::raw("Host: "),
+            Span::styled(us.uname.clone(), Style::default().fg(Color::Green)),
+        ]),
+        Spans::from(vec![
+            Span::raw("Room Id: "),
+            Span::styled(us.room_id.clone(), Style::default().fg(Color::Cyan)),
+        ]),
+        Spans::from(vec![
+            Span::raw("Title: "),
+            Span::styled(us.title.clone(), Style::default().fg(Color::Cyan)),
+        ]),
+        Spans::from(vec![
+            Span::raw("Area: "),
+            Span::styled(
+                format!("{}/{}", us.parent_area_name.as_str(), us.area_name.as_str()),
+                Style::default().fg(Color::Cyan),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::raw("Description: "),
+            Span::styled(us.description.clone(), Style::default().fg(Color::Cyan)),
+        ]),
+    ];
+    let base_info = Paragraph::new(text).block(Block::default().borders(Borders::ALL));
+    f.render_widget(base_info, chunks[0]);
+
+    /* other info */
+    let duration = crate::utils::duration(us.live_start_time as u64);
+    let text = vec![
+        Spans::from(vec![
+            Span::raw("Live duration: "),
+            Span::styled(
+                crate::utils::display_duration(duration),
+                Style::default().fg(Color::Red),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::raw("Attention: "),
+            Span::styled(us.attention.to_string(), Style::default().fg(Color::Red)),
+        ]),
+        Spans::from(vec![
+            Span::raw("Watched show: "),
+            Span::styled(us.watched_show.to_string(), Style::default().fg(Color::Red)),
+        ]),
+    ];
+    let other_info = Paragraph::new(text).block(Block::default().borders(Borders::ALL));
+    f.render_widget(other_info, chunks[1]);
 }
 
 impl<B: Backend + std::io::Write> Drop for UI<B> {

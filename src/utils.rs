@@ -84,6 +84,24 @@ pub fn timestamp_to_datetime(ts: u64) -> chrono::DateTime<chrono::Utc> {
     ) + offset
 }
 
+pub fn timestamp_to_time_minutes(ts: u64) -> chrono::Duration {
+    chrono::Duration::minutes(ts as i64 / 60)
+}
+
+pub fn duration(start_ts: u64) -> chrono::Duration {
+    let now_ts = chrono::Utc::now().timestamp() as u64;
+    let duration_secs = now_ts - start_ts;
+
+    timestamp_to_time_minutes(duration_secs)
+}
+
+pub fn display_duration(duration: chrono::Duration) -> String {
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes() - hours * 60;
+
+    format!("{}:{}", hours, minutes)
+}
+
 #[test]
 fn test_fill_datapack_header() {
     let mut data_pack: Vec<u8> = vec![0; 32];
