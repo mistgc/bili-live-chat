@@ -33,9 +33,8 @@ impl Request {
             for (k, v) in params.unwrap() {
                 url += format!("{}={}&", k, v).as_str();
             }
+            url.pop();
         }
-
-        url.pop();
 
         // Create a request builder
         let mut req_builder = client

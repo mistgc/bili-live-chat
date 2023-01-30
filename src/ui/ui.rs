@@ -59,6 +59,7 @@ struct UiState {
     watched_show: i64,
     attention: i64,
     uname: String,
+    total_likes: i64,
 }
 
 impl<B: Backend + std::io::Write> UI<B> {
@@ -134,6 +135,7 @@ impl<B: Backend + std::io::Write> UI<B> {
                 self.ui_state.watched_show = ri["watched_show"].parse().unwrap();
                 self.ui_state.attention = ri["attention"].parse().unwrap();
                 self.ui_state.uname = ri["uname"].clone();
+                self.ui_state.total_likes = ri["total_likes"].parse().unwrap();
             }
 
             /* Poll Keyboard Events */
@@ -260,7 +262,7 @@ fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
 
 fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
     let chunks = Layout::default()
-        .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
 
     /* base info */
@@ -301,6 +303,10 @@ fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
                 crate::utils::display_duration(duration),
                 Style::default().fg(Color::Red),
             ),
+        ]),
+        Spans::from(vec![
+            Span::raw("Total likes: "),
+            Span::styled(us.total_likes.to_string(), Style::default().fg(Color::Red)),
         ]),
         Spans::from(vec![
             Span::raw("Attention: "),

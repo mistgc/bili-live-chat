@@ -146,6 +146,14 @@ impl LiveRoom {
                         .trim_end_matches("\"")
                         .to_string(),
                 );
+                out.insert(
+                    "total_likes".to_owned(),
+                    value["data"]["like_info_v3"]["total_likes"]
+                        .to_string()
+                        .trim_start_matches("\"")
+                        .trim_end_matches("\"")
+                        .to_string(),
+                );
 
                 Some(out)
             }

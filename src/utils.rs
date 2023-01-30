@@ -99,7 +99,11 @@ pub fn display_duration(duration: chrono::Duration) -> String {
     let hours = duration.num_hours();
     let minutes = duration.num_minutes() - hours * 60;
 
-    format!("{}:{}", hours, minutes)
+    if minutes < 10 {
+        format!("{}:0{}", hours, minutes)
+    } else {
+        format!("{}:{}", hours, minutes)
+    }
 }
 
 #[test]
