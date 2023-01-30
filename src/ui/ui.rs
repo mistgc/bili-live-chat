@@ -46,6 +46,7 @@ struct UiState {
     chat_history: Vec<Message>,
 
     /* Tab 2: Rank Info */
+    rank_info: Option<String>,
 
     /* Tab 3: Room Info */
     uid: String,
@@ -124,6 +125,17 @@ impl<B: Backend + std::io::Write> UI<B> {
 
             /* Sync Room Info */
             if let Ok(ri) = self.ui_state.rm_info_rx.as_mut().unwrap().try_recv() {
+                /* Rank Info */
+                self.ui_state.rank_info = {
+                    let data = &ri["rank_info"];
+                    if data.len() == 0 {
+                        None
+                    } else {
+                        Some(data.clone())
+                    }
+                };
+
+                /* Room Info */
                 self.ui_state.uid = ri["uid"].clone();
                 self.ui_state.room_id = ri["room_id"].clone();
                 self.ui_state.title = ri["title"].clone();
@@ -265,9 +277,41 @@ fn draw_chat_room<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
 
 fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
     let chunks = Layout::default()
-        .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
+        .direction(tui::layout::Direction::Horizontal)
         .split(area);
-    // TODO
+
+    /* rank info */
+    let rank_info_items = {
+        if let Some(ref data) = us.rank_info {
+            Some(data.split(",").collect::<Vec<_>>())
+        } else {
+            None
+        }
+    };
+    let mut list_items = vec![];
+    if let Some(data) = rank_info_items {
+        for (k, v) in data.iter().enumerate() {
+            let rank;
+            if k < 3 {
+                rank = Span::styled(k.to_string() + ": ", Style::default().fg(Color::Red));
+            } else {
+                rank = Span::styled(k.to_string(), Style::default().fg(Color::Blue));
+            }
+            let uname = Span::styled(v.to_owned(), Style::default());
+            list_items.push(ListItem::new(Text::from(Spans::from(vec![rank, uname]))));
+        }
+    } else {
+        list_items.push(ListItem::new(Text::from("Here is not anyone.")));
+    }
+
+    let rank_info_list =
+        List::new(list_items).block(Block::default().borders(Borders::ALL).title("Rank"));
+    f.render_widget(rank_info_list, chunks[0]);
+
+    /* SC (TODO) */
+    let block = Block::default().borders(Borders::ALL);
+    f.render_widget(block, chunks[1]);
 }
 
 fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {

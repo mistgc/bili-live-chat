@@ -154,10 +154,38 @@ impl LiveRoom {
                         .trim_end_matches("\"")
                         .to_string(),
                 );
+                out.insert("rank_info".to_owned(), {
+                    if let Some(rank_info) =
+                        Self::parse_rank_info(&value["data"]["online_gold_rank_info_v2"]["list"])
+                    {
+                        rank_info
+                            .trim_start_matches("\"")
+                            .trim_end_matches("\"")
+                            .to_string()
+                    } else {
+                        "".to_owned()
+                    }
+                });
 
                 Some(out)
             }
             Err(_) => None,
+        }
+    }
+
+    fn parse_rank_info(list: &serde_json::Value) -> Option<String> {
+        let mut out = String::new();
+        match list {
+            serde_json::Value::Array(data) => {
+                for i in data {
+                    out += i["uname"].to_string().as_str();
+                    out.push(','); // push a separator ','
+                }
+                out.pop(); // pop out the end reduntant separator
+
+                Some(out)
+            }
+            _ => None,
         }
     }
 }
