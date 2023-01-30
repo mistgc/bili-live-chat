@@ -207,7 +207,17 @@ fn draw_ui<B: Backend>(f: &mut Frame<B>, us: &mut UiState) {
     ];
     let tabs_title = tabs_title
         .iter()
-        .map(|item| Spans::from(Span::from(item.as_str())))
+        .enumerate()
+        .map(|(index, item)| {
+            if index == us.tab_selected {
+                Spans::from(Span::styled(
+                    item.as_str(),
+                    Style::default().fg(Color::Blue),
+                ))
+            } else {
+                Spans::from(Span::from(item.as_str()))
+            }
+        })
         .collect();
     let tabs = Tabs::new(tabs_title).select(us.tab_selected);
     f.render_widget(tabs, chunks[0]);
