@@ -47,6 +47,7 @@ struct UiState {
 
     /* Tab 2: Rank Info */
     rank_info: Option<String>,
+    gift_history: Vec<Message>,
 
     /* Tab 3: Room Info */
     uid: String,
@@ -100,11 +101,15 @@ impl<B: Backend + std::io::Write> UI<B> {
         }
 
         loop {
-            // When the length of chat_history is greater than or equal to 100,
+            // When the length of chat_history and gift_history is greater than or equal to 100,
             // clear up the first 50 chats to ensure that the length of chat_history
             // is not too long.
             if self.ui_state.chat_history.len() >= 100 {
                 self.ui_state.chat_history.drain(0..50);
+            }
+
+            if self.ui_state.gift_history.len() >= 100 {
+                self.ui_state.gift_history.drain(0..50);
             }
 
             /* Draw UI */
@@ -118,6 +123,9 @@ impl<B: Backend + std::io::Write> UI<B> {
                 match msg.kind {
                     MessageKind::DANMU_MSG => {
                         self.ui_state.chat_history.push(msg);
+                    }
+                    MessageKind::SEND_GIFT => {
+                        self.ui_state.gift_history.push(msg);
                     }
                     _ => {}
                 }
@@ -294,9 +302,9 @@ fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
         for (k, v) in data.iter().enumerate() {
             let rank;
             if k < 3 {
-                rank = Span::styled(k.to_string() + ": ", Style::default().fg(Color::Red));
+                rank = Span::styled((k + 1).to_string() + ": ", Style::default().fg(Color::Red));
             } else {
-                rank = Span::styled(k.to_string(), Style::default().fg(Color::Blue));
+                rank = Span::styled((k + 1).to_string() + ": ", Style::default().fg(Color::Blue));
             }
             let uname = Span::styled(v.to_owned(), Style::default());
             list_items.push(ListItem::new(Text::from(Spans::from(vec![rank, uname]))));
@@ -309,9 +317,28 @@ fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
         List::new(list_items).block(Block::default().borders(Borders::ALL).title("Rank"));
     f.render_widget(rank_info_list, chunks[0]);
 
-    /* SC (TODO) */
-    let block = Block::default().borders(Borders::ALL);
-    f.render_widget(block, chunks[1]);
+    /* gift */
+    let mut gift_items = us
+        .gift_history
+        .iter()
+        .map(|v| {
+            let datetime = v.date.format("[%H:%M]").to_string();
+            let gift_ctnt = Spans::from(vec![
+                Span::raw(datetime),
+                Span::styled(
+                    " ".to_owned() + v.author.as_str() + " ",
+                    Style::default().fg(Color::Blue),
+                ),
+                Span::styled(v.content.clone(), Style::default().fg(Color::Green)),
+            ]);
+            ListItem::new(gift_ctnt)
+        })
+        .collect::<Vec<_>>();
+    gift_items.reverse();
+    let gift_list = List::new(gift_items)
+        .block(Block::default().borders(Borders::ALL).title("Gift"))
+        .start_corner(tui::layout::Corner::BottomLeft);
+    f.render_widget(gift_list, chunks[1]);
 }
 
 fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {

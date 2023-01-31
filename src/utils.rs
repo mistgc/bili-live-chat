@@ -75,7 +75,7 @@ pub fn split_packs(data: &[u8]) -> Vec<Vec<u8>> {
     packs
 }
 
-pub fn timestamp_to_datetime(ts: u64) -> chrono::DateTime<chrono::Utc> {
+pub fn timestamp_to_datetime_utc8(ts: u64) -> chrono::DateTime<chrono::Utc> {
     let offset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
 
     // UTC+8

@@ -202,7 +202,7 @@ impl DanmakuClient {
             "\"DANMU_MSG\"" => {
                 let content = json["info"][1].to_string();
                 let author = json["info"][2][1].to_string();
-                let datetime = utils::timestamp_to_datetime(
+                let datetime = utils::timestamp_to_datetime_utc8(
                     json["info"][9]["ts"].to_string().parse().unwrap(),
                 );
                 let msg = Message::new(
@@ -214,8 +214,64 @@ impl DanmakuClient {
                 /* Send Message to Channel */
                 self.mpsc_tx.as_mut().unwrap().send(msg).await.unwrap();
             }
+
+            "\"SUPER_CHAT_MESSAGE\"" => {
+                let content = json["data"]["message"]
+                    .to_string()
+                    .trim_start_matches("\"")
+                    .trim_end_matches("\"")
+                    .to_owned();
+                let mut author = json["data"]["user_info"]["uname"]
+                    .to_string()
+                    .trim_start_matches("\"")
+                    .trim_end_matches("\"")
+                    .to_owned();
+                // separator: ","
+                // format: "username,sc_duration,endtime"
+                author = author
+                    + ","
+                    + json["data"]["time"].to_string().as_str()
+                    + ","
+                    + json["data"]["end_time"].to_string().as_str();
+                let datetime = utils::timestamp_to_datetime_utc8(
+                    json["data"]["start_time"].to_string().parse().unwrap(),
+                );
+                let msg = Message::new(MessageKind::SUPER_CHAT_MESSAGE, content, author, datetime);
+                /* Send Message to Channel */
+                self.mpsc_tx.as_mut().unwrap().send(msg).await.unwrap();
+            }
+
             "\"COMBO_SEND\"" => {}
-            "\"SEND_GIFT\"" => {}
+            "\"SEND_GIFT\"" => {
+                let action = json["data"]["action"]
+                    .to_string()
+                    .trim_start_matches("\"")
+                    .trim_end_matches("\"")
+                    .to_owned();
+                let gift_name = json["data"]["giftName"]
+                    .to_string()
+                    .trim_start_matches("\"")
+                    .trim_end_matches("\"")
+                    .to_owned();
+                let gift_num = json["data"]["num"].to_string();
+                let uname = json["data"]["uname"]
+                    .to_string()
+                    .trim_start_matches("\"")
+                    .trim_end_matches("\"")
+                    .to_owned();
+                let datetime = utils::timestamp_to_datetime_utc8(
+                    json["data"]["timestamp"].to_string().parse().unwrap(),
+                );
+                // TODO: implment i18n
+                let msg = Message::new(
+                    MessageKind::SEND_GIFT,
+                    action + "了" + gift_num.as_str() + "个" + gift_name.as_str(),
+                    uname,
+                    datetime,
+                );
+                /* Send Message to Channel */
+                self.mpsc_tx.as_mut().unwrap().send(msg).await.unwrap();
+            }
             "\"INTERACT_WORD\"" => {}
             "\"NOTICE_MSG\"" => {}
             _ => {}
