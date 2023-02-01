@@ -40,6 +40,14 @@ credential:
 
 ## Usage
 
+**Press `Q` to quit programe**
+
+**Press `E` into Editing Mode**
+
+**Press `Esc` to exit Editing Mode**
+
+**Press `Tab` to switch the tab**
+
 ```
 Usage: bili-live-chat [OPTIONS] -d <ROOM_ID>
 

@@ -40,6 +40,14 @@ credential:
 
 ## 使用
 
+**按 `Q` 退出**
+
+**按 `E` 进入 Editing Mode**
+
+**按 `Esc` 退出 Editing Mode**
+
+**按 `Tab` 切换标签**
+
 ```
 Usage: bili-live-chat [OPTIONS] -d <ROOM_ID>
 
