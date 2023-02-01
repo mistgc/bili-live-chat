@@ -1,4 +1,4 @@
-use chrono::{self, Datelike, Timelike};
+use chrono;
 use flate2::read::ZlibDecoder;
 use std::io::prelude::*;
 

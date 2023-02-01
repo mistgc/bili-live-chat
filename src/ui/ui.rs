@@ -1,6 +1,6 @@
 use std::{collections::HashMap, process::exit, sync::Arc, time::Duration};
 
-use crate::{api::live::LiveRoom, config::Config, Credential, Message, MessageKind};
+use crate::{api::live::LiveRoom, config::Config, Message, MessageKind};
 use crossterm::{
     event::{self, DisableMouseCapture, Event, KeyCode},
     execute,
@@ -24,6 +24,7 @@ enum InputMode {
     Editing,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct UI<B: Backend + std::io::Write> {
     ui_state: UiState,
@@ -32,7 +33,6 @@ pub struct UI<B: Backend + std::io::Write> {
     config: Arc<Mutex<Config>>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Default)]
 struct UiState {
     /* Channal Receiver */
