@@ -40,6 +40,61 @@ impl LiveRoom {
         .unwrap();
     }
 
+    pub async fn get_rank_info(room_id: i64, ruid: i64, page: i32) -> Option<Vec<String>> {
+        let mut params = HashMap::new();
+        params.insert("roomId".to_owned(), room_id.to_string());
+        params.insert("page".to_owned(), page.to_string());
+        params.insert("ruid".to_owned(), ruid.to_string());
+        params.insert("pageSize".to_owned(), 50.to_string());
+        let resp = Request::send(
+            "GET",
+            "https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank",
+            Some(&params),
+            None,
+            None,
+            true,
+        )
+        .await;
+
+        match resp {
+            Ok(data) => {
+                let value: serde_json::Value =
+                    serde_json::from_str(data.text().await.unwrap().as_str()).unwrap();
+                // format: name,guard_level,score
+                let mut out: Vec<String> = vec![];
+                if value["data"]["OnlineRankItem"].is_array() {
+                    value["data"]["OnlineRankItem"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|v| {
+                            // format: name,guard_level,score
+                            out.push(
+                                v["name"]
+                                    .as_str()
+                                    .unwrap()
+                                    .trim_end_matches("\"")
+                                    .trim_start_matches("\"")
+                                    .to_string()
+                                    + ","
+                                    + v["guard_level"].to_string().as_str()
+                                    + ","
+                                    + v["score"].to_string().as_str(),
+                            );
+                        })
+                        .count(); // The iterator is lazy, so it must be used.
+                }
+
+                Some(out)
+            }
+            Err(_) => None,
+        }
+    }
+
+    pub async fn get_rank_info_first_50(room_id: i64, ruid: i64) -> Option<Vec<String>> {
+        Self::get_rank_info(room_id, ruid, 1).await
+    }
+
     pub async fn get_room_info(room_display_id: i64) -> Option<HashMap<String, String>> {
         let mut params = HashMap::new();
         params.insert("room_id".to_owned(), room_display_id.to_string());
@@ -59,7 +114,7 @@ impl LiveRoom {
                     serde_json::from_str(data.text().await.unwrap().as_str()).unwrap();
                 let mut out = HashMap::new();
                 out.insert(
-                    "uid".to_owned(),
+                    "ruid".to_owned(),
                     value["data"]["room_info"]["uid"]
                         .to_string()
                         .trim_start_matches("\"")

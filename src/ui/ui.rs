@@ -38,6 +38,7 @@ struct UiState {
     /* Channal Receiver */
     msg_rx: Option<Receiver<Message>>,
     rm_info_rx: Option<Receiver<HashMap<String, String>>>,
+    rank_info_rx: Option<Receiver<Vec<String>>>,
 
     /* Tab 1: Chat Room */
     input_mode: InputMode,
@@ -46,11 +47,11 @@ struct UiState {
     chat_history: Vec<Message>,
 
     /* Tab 2: Rank Info */
-    rank_info: Option<String>,
+    rank_info: Option<Vec<String>>,
     gift_history: Vec<Message>,
 
     /* Tab 3: Room Info */
-    uid: String,
+    ruid: String,
     room_id: String,
     title: String,
     tags: String,
@@ -69,12 +70,14 @@ impl<B: Backend + std::io::Write> UI<B> {
         term: Terminal<B>,
         msg_rx: Receiver<Message>,
         rm_info_rx: Receiver<HashMap<String, String>>,
+        rank_info_rx: Receiver<Vec<String>>,
         room_id: i64,
         config: Arc<Mutex<Config>>,
     ) -> Self {
         let state = UiState {
             msg_rx: Some(msg_rx),
             rm_info_rx: Some(rm_info_rx),
+            rank_info_rx: Some(rank_info_rx),
             ..Default::default()
         };
 
@@ -133,18 +136,8 @@ impl<B: Backend + std::io::Write> UI<B> {
 
             /* Sync Room Info */
             if let Ok(ri) = self.ui_state.rm_info_rx.as_mut().unwrap().try_recv() {
-                /* Rank Info */
-                self.ui_state.rank_info = {
-                    let data = &ri["rank_info"];
-                    if data.len() == 0 {
-                        None
-                    } else {
-                        Some(data.clone())
-                    }
-                };
-
                 /* Room Info */
-                self.ui_state.uid = ri["uid"].clone();
+                self.ui_state.ruid = ri["ruid"].clone();
                 self.ui_state.room_id = ri["room_id"].clone();
                 self.ui_state.title = ri["title"].clone();
                 self.ui_state.tags = ri["tags"].clone();
@@ -156,6 +149,11 @@ impl<B: Backend + std::io::Write> UI<B> {
                 self.ui_state.attention = ri["attention"].parse().unwrap();
                 self.ui_state.uname = ri["uname"].clone();
                 self.ui_state.total_likes = ri["total_likes"].parse().unwrap();
+            }
+
+            /* Sync The First 50 Of Rank Info */
+            if let Ok(rf50) = self.ui_state.rank_info_rx.as_mut().unwrap().try_recv() {
+                self.ui_state.rank_info = Some(rf50);
             }
 
             /* Poll Keyboard Events */
@@ -292,7 +290,12 @@ fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
     /* rank info */
     let rank_info_items = {
         if let Some(ref data) = us.rank_info {
-            Some(data.split(",").collect::<Vec<_>>())
+            Some(
+                // format: name,guard_level,score
+                data.iter()
+                    .map(|i| i.split(',').collect::<Vec<_>>())
+                    .collect::<Vec<_>>(),
+            )
         } else {
             None
         }
@@ -304,10 +307,14 @@ fn draw_rank_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
             if k < 3 {
                 rank = Span::styled((k + 1).to_string() + ": ", Style::default().fg(Color::Red));
             } else {
-                rank = Span::styled((k + 1).to_string() + ": ", Style::default().fg(Color::Blue));
+                rank = Span::raw((k + 1).to_string() + ": ");
             }
-            let uname = Span::styled(v.to_owned(), Style::default());
-            list_items.push(ListItem::new(Text::from(Spans::from(vec![rank, uname]))));
+            let spans = Spans::from(vec![
+                rank,
+                Span::styled(v[0].to_owned() + " ", Style::default().fg(Color::Cyan)),
+                Span::styled(v[2].to_owned(), Style::default().fg(Color::Blue)),
+            ]);
+            list_items.push(ListItem::new(Text::from(spans)));
         }
     } else {
         list_items.push(ListItem::new(Text::from("Here is not anyone.")));
