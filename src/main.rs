@@ -56,8 +56,9 @@ fn cli_init() -> (u32, Config) {
         .parse::<u32>()
         .unwrap_or_else(|_| panic!("Invalid Room Id."));
 
-    let mut config = if let Some(path) = matches.get_one::<String>("config") {
-        Config::from_file(path).unwrap()
+    let mut config = if let Some(path) = matches.get_one::<PathBuf>("config") {
+        let path_str = path.to_str().unwrap();
+        Config::from_file(path_str).unwrap_or_else(|_| panic!("No such file or directory"))
     } else if let Ok(conf) = Config::from_file(
         format!(
             "{}/.config/bili-live-chat/config.yml",
