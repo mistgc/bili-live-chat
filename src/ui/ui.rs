@@ -1,6 +1,6 @@
 use std::{collections::HashMap, process::exit, sync::Arc, time::Duration};
 
-use crate::{api::live::LiveRoom, config::Config, Credential, Message, MessageKind};
+use crate::{api::live::LiveRoom, config::Config, Message, MessageKind};
 use crossterm::{
     event::{self, DisableMouseCapture, Event, KeyCode},
     execute,
@@ -29,6 +29,7 @@ pub struct UI<B: Backend + std::io::Write> {
     ui_state: UiState,
     terminal: Option<Terminal<B>>,
     live_room: LiveRoom,
+    #[allow(unused)]
     config: Arc<Mutex<Config>>,
 }
 

@@ -2,18 +2,18 @@
 
 use std::{io, time::SystemTime};
 
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Utc};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, ModifierKeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Widget},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Frame, Terminal,
 };
 
@@ -207,12 +207,12 @@ fn draw_first_tab<B: Backend>(f: &mut Frame<B>, aw: &mut AppWidgets, area: Rect)
     }
 }
 
-fn draw_second_tab<B: Backend>(f: &mut Frame<B>, aw: &mut AppWidgets, area: Rect) {
+fn draw_second_tab<B: Backend>(f: &mut Frame<B>, _aw: &mut AppWidgets, area: Rect) {
     let block = Block::default().title("Tab 2").borders(Borders::ALL);
     f.render_widget(block, area);
 }
 
-fn draw_third_tab<B: Backend>(f: &mut Frame<B>, aw: &mut AppWidgets, area: Rect) {
+fn draw_third_tab<B: Backend>(f: &mut Frame<B>, _aw: &mut AppWidgets, area: Rect) {
     let block = Block::default().title("Tab 3").borders(Borders::ALL);
     f.render_widget(block, area);
 }
