@@ -29,12 +29,13 @@ pub trait Pack {
 
 #[derive(Debug, Default)]
 pub struct DanmakuClient {
-    client: reqwest::Client,                                    /* Http Client */
-    account: Account,                                           /* BiliBili Account */
-    room_id: u32,                                               /* Room ID */
-    token: String,                                              /* Token */
-    host_list: Vec<HostServer>,                                 /* Danmu Host Server List */
-    host_index: u8, /* Index of Danmu Host Server Connected */
+    client: reqwest::Client,    /* Http Client */
+    account: Account,           /* BiliBili Account */
+    room_id: u32,               /* Room ID */
+    token: String,              /* Token */
+    host_list: Vec<HostServer>, /* Danmu Host Server List */
+    host_index: u8,             /* Index of Danmu Host Server Connected */
+    // When the function connect() finishes, conn_write will be taken and returned to outside.
     conn_write: Option<SplitSink<WebSocketStream, WssMessage>>, /* Connection with Danmu Host Server */
     conn_read: Option<SplitStream<WebSocketStream>>, /* Connection with Danmu Host Server */
     mpsc_tx: Option<Sender<Message>>,                /* Channel Sender */
@@ -124,12 +125,16 @@ impl DanmakuClient {
     }
 
     async fn send(&mut self, data: &[u8]) {
-        self.conn_write
+        match self
+            .conn_write
             .as_mut()
             .unwrap()
             .send(WssMessage::from(data))
             .await
-            .unwrap();
+        {
+            Err(e) => eprintln!("{:#?}", e),
+            _ => {}
+        }
     }
 
     async fn read(&mut self) -> Vec<u8> {
@@ -169,7 +174,9 @@ impl DanmakuClient {
         self.send(&beat_pack).await;
     }
 
-    pub async fn connect(&mut self) -> Result<(), reqwest::Error> {
+    pub async fn connect(
+        &mut self,
+    ) -> Result<SplitSink<WebSocketStream, WssMessage>, reqwest::Error> {
         // initialize danmu client
         self.init_client().await?;
 
@@ -179,7 +186,11 @@ impl DanmakuClient {
         // send authentication pack
         self.send_auth().await;
 
-        Ok(())
+        if let Some(conn_write) = self.conn_write.take() {
+            Ok(conn_write)
+        } else {
+            panic!("Connecting bilibili danmaku server failed.");
+        }
     }
 
     pub async fn receive(&mut self) {

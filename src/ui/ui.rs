@@ -157,7 +157,7 @@ impl<B: Backend + std::io::Write> UI<B> {
             }
 
             /* Poll Keyboard Events */
-            if crossterm::event::poll(Duration::from_millis(100)).unwrap() {
+            if crossterm::event::poll(Duration::from_millis(10)).unwrap() {
                 if let Event::Key(key) = event::read()? {
                     match self.ui_state.input_mode {
                         InputMode::Normal => match key.code {

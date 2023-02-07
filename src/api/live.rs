@@ -28,7 +28,7 @@ impl LiveRoom {
         danmaku.insert("rnd".to_owned(), timestamp.to_string());
         danmaku.insert("bubble".to_owned(), 0.to_string());
 
-        Request::send(
+        if let Err(e) = Request::send(
             "POST",
             "https://api.live.bilibili.com/msg/send",
             None,
@@ -37,7 +37,9 @@ impl LiveRoom {
             false,
         )
         .await
-        .unwrap();
+        {
+            eprintln!("[Error] send_normal_danmaku: {:#?}", e);
+        }
     }
 
     pub async fn get_rank_info(room_id: i64, ruid: i64, page: i32) -> Option<Vec<String>> {

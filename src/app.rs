@@ -1,15 +1,20 @@
 #![allow(dead_code)]
 
+use crate::{api, client, config::Config, Message, UI};
 use crossterm::{
     event::EnableMouseCapture,
     execute,
     terminal::{enable_raw_mode, EnterAlternateScreen},
 };
+use futures::{stream::SplitSink, SinkExt};
 use std::{collections::HashMap, io::Stdout, sync::Arc, time::Duration};
+use tokio::net::TcpStream;
 use tokio::sync::{mpsc, Mutex};
+use tokio_tungstenite as tungstenite;
 use tui::{backend::CrosstermBackend, Terminal};
+use tungstenite::{tungstenite::protocol::Message as WssMessage, MaybeTlsStream};
 
-use crate::{api, client, config::Config, Message, UI};
+type WebSocketStream = tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 pub struct App {
     ui: Arc<Mutex<UI<CrosstermBackend<Stdout>>>>,    /* UI */
@@ -19,6 +24,7 @@ pub struct App {
     msg_tx: mpsc::Sender<Message>,                   /* sender for message */
     rm_info_tx: mpsc::Sender<HashMap<String, String>>, /* sender for room information */
     rank_info_tx: mpsc::Sender<Vec<String>>,         /* sender for rank info */
+    wss_write: Option<Arc<Mutex<SplitSink<WebSocketStream, WssMessage>>>>, /* web socket stream writer side */
 }
 
 impl App {
@@ -59,25 +65,41 @@ impl App {
             msg_tx,
             rm_info_tx,
             rank_info_tx,
+            wss_write: None,
+        }
+    }
+
+    async fn send_heart_beat(wss_write: &mut Arc<Mutex<SplitSink<WebSocketStream, WssMessage>>>) {
+        let ref mut a = *wss_write.as_ref().lock().await;
+        let mut beat_pack: Vec<u8> = vec![0; 16];
+        crate::utils::fill_datapack_header(
+            client::DataPack::HeartBeat,
+            beat_pack.as_mut_slice(),
+            1,
+        );
+        if let Err(e) = a.send(WssMessage::from(beat_pack)).await {
+            eprintln!("[Error] send_heart_beat: {:#?}", e);
         }
     }
 
     pub async fn run(&mut self) {
-        self.danmu_client.lock().await.connect().await.unwrap();
+        match self.danmu_client.lock().await.connect().await {
+            Ok(wss_write) => self.wss_write = Some(Arc::new(Mutex::new(wss_write))),
+            Err(e) => eprintln!("{:#?}", e),
+        }
 
-        let client1 = self.danmu_client.clone();
-        let beat = tokio::spawn(async move {
+        let mut wss_write = self.wss_write.as_mut().unwrap().clone();
+        let heartbeat = tokio::spawn(async move {
             loop {
-                client1.lock().await.send_heart_beat().await;
+                Self::send_heart_beat(&mut wss_write).await;
                 tokio::time::sleep(Duration::from_secs(30)).await;
             }
         });
 
-        let client2 = self.danmu_client.clone();
+        let client = self.danmu_client.clone();
         let recv_msg = tokio::spawn(async move {
             loop {
-                client2.lock().await.receive().await;
-                tokio::time::sleep(Duration::from_secs_f32(0.3)).await;
+                client.lock().await.receive().await;
             }
         });
 
@@ -105,7 +127,7 @@ impl App {
             }
         });
 
-        tokio::join!(beat, recv_msg, draw_ui, sync_room_info)
+        tokio::join!(heartbeat, recv_msg, draw_ui, sync_room_info)
             .0
             .unwrap();
     }

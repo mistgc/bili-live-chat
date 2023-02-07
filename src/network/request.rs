@@ -42,7 +42,8 @@ impl Request {
                 reqwest::Method::from_str(&method).unwrap(),
                 reqwest::Url::from_str(url.as_str()).unwrap(),
             )
-            .header("Referer", "https://www.bilibili.com");
+            .header("Referer", "https://www.bilibili.com")
+            .header("Origin", "https://www.bilibili.com");
 
         // Add cookies into headers of request
         if cookies.len() > 0 {
