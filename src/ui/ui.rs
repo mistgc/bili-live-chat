@@ -354,7 +354,7 @@ fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
         .split(area);
 
     /* base info */
-    let text = vec![
+    let mut text = vec![
         Spans::from(vec![
             Span::raw("Host: "),
             Span::styled(us.uname.clone(), Style::default().fg(Color::Green)),
@@ -374,11 +374,11 @@ fn draw_room_info<B: Backend>(f: &mut Frame<B>, us: &mut UiState, area: Rect) {
                 Style::default().fg(Color::Cyan),
             ),
         ]),
-        Spans::from(vec![
-            Span::raw("Description: "),
-            Span::styled(us.description.clone(), Style::default().fg(Color::Cyan)),
-        ]),
     ];
+    text.append(&mut crate::utils::parse_description(
+        &us.description,
+        Style::default().fg(Color::Cyan),
+    ));
     let base_info = Paragraph::new(text).block(Block::default().borders(Borders::ALL));
     f.render_widget(base_info, chunks[0]);
 

@@ -106,6 +106,32 @@ pub fn display_duration(duration: chrono::Duration) -> String {
     }
 }
 
+pub fn parse_description(description: &String, style: tui::style::Style) -> Vec<tui::text::Spans> {
+    let lines = description
+        .split("\\n")
+        .collect::<Vec<_>>()
+        .into_iter()
+        .filter(|item| item.len() > 0)
+        .collect::<Vec<_>>();
+    let mut spans_vec = vec![];
+    if lines.len() == 1 {
+        spans_vec.push(tui::text::Spans::from(vec![
+            tui::text::Span::raw("Description: "),
+            tui::text::Span::styled(lines[0], style),
+        ]));
+    } else {
+        spans_vec.push(tui::text::Spans::from("Description: "));
+        for line in lines {
+            spans_vec.push(tui::text::Spans::from(tui::text::Span::styled(
+                "  ".to_owned() + line,
+                style,
+            )));
+        }
+    }
+
+    spans_vec
+}
+
 #[test]
 fn test_fill_datapack_header() {
     let mut data_pack: Vec<u8> = vec![0; 32];
@@ -116,4 +142,33 @@ fn test_fill_datapack_header() {
         let new_expected = std::slice::from_raw_parts(raw_expected.wrapping_sub(1), 32);
         assert_eq!(new_expected, data_pack.as_slice());
     }
+}
+
+#[test]
+fn test_parse_description() {
+    let description = "Hello\\nWorld!\\n".to_owned();
+    let expect = vec![
+        tui::text::Spans::from("Description: "),
+        tui::text::Spans::from("  Hello"),
+        tui::text::Spans::from("  World!"),
+    ];
+    let actual = parse_description(&description, tui::style::Style::default());
+    assert_eq!(expect, actual);
+
+    let description = "Hello\\n\\n\\n\\n\\n\\nWorld!\\n".to_owned();
+    let expect = vec![
+        tui::text::Spans::from("Description: "),
+        tui::text::Spans::from("  Hello"),
+        tui::text::Spans::from("  World!"),
+    ];
+    let actual = parse_description(&description, tui::style::Style::default());
+    assert_eq!(expect, actual);
+
+    let description = "Hello\\n".to_owned();
+    let expect = vec![tui::text::Spans::from(vec![
+        tui::text::Span::raw("Description: "),
+        tui::text::Span::raw("Hello"),
+    ])];
+    let actual = parse_description(&description, tui::style::Style::default());
+    assert_eq!(expect, actual);
 }
